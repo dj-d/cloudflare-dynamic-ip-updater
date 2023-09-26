@@ -1,8 +1,11 @@
+import os
 import requests
 import subprocess
 from time import sleep
-from dotenv import dotenv_values
 import logging
+
+
+# FIXME: fix running in local environment (by python3 main.py)
 
 
 logging.basicConfig(
@@ -40,8 +43,8 @@ def get_actual_ip() -> str:
         logging.error(f'Error while getting actual IP: {_r.json()}')
 
         telegram_notification(
-            api_key=config['TL_API_KEY'],
-            chat_id=config['TL_CHAT_ID'],
+            api_key=TL_API_KEY,
+            chat_id=TL_CHAT_ID,
             message=f'Error while getting actual IP: {_r.json()}'
         )
 
@@ -65,8 +68,8 @@ def check_token(bearer_token: str) -> bool:
         logging.error(f'Error while checking token: {_r.json()}')
 
         telegram_notification(
-            api_key=config['TL_API_KEY'],
-            chat_id=config['TL_CHAT_ID'],
+            api_key=TL_API_KEY,
+            chat_id=TL_CHAT_ID,
             message=f'Error while checking token: {_r.json()}'
         )
 
@@ -90,8 +93,8 @@ def get_record_list(bearer_token: str, zone_id: str) -> list:
         logging.error(f'Error while getting record list: {_r.json()}')
 
         telegram_notification(
-            api_key=config['TL_API_KEY'],
-            chat_id=config['TL_CHAT_ID'],
+            api_key=TL_API_KEY,
+            chat_id=TL_CHAT_ID,
             message=f'Error while getting record list: {_r.json()}'
         )
 
@@ -115,8 +118,8 @@ def get_record_ip(bearer_token: str, dns_record_id: str, zone_id: str) -> str:
         logging.error(f'Error while getting record: {_r.json()}')
 
         telegram_notification(
-            api_key=config['TL_API_KEY'],
-            chat_id=config['TL_CHAT_ID'],
+            api_key=TL_API_KEY,
+            chat_id=TL_CHAT_ID,
             message=f'Error while getting record: {_r.json()}'
         )
 
@@ -148,8 +151,8 @@ def update_record(bearer_token: str, dns_record_id: str, zone_id: str, dns_recor
         logging.error(f'Error while updating record: {_r.json()}')
 
         telegram_notification(
-            api_key=config['TL_API_KEY'],
-            chat_id=config['TL_CHAT_ID'],
+            api_key=TL_API_KEY,
+            chat_id=TL_CHAT_ID,
             message=f'Error while updating record: {_r.json()}'
         )
 
@@ -157,14 +160,19 @@ def update_record(bearer_token: str, dns_record_id: str, zone_id: str, dns_recor
 
 
 if __name__ == '__main__':
-    config = dotenv_values('.env')
+    DNS_RECORD_ID = os.environ.get('DNS_RECORD_ID')
+    DNS_RECORD_NAME = os.environ.get('DNS_RECORD_NAME')
+    ZONE_ID = os.environ.get('ZONE_ID')
+    BEARER_TOKEN = os.environ.get('BEARER_TOKEN')
+    TL_API_KEY = os.environ.get('TL_API_KEY')
+    TL_CHAT_ID = os.environ.get('TL_CHAT_ID')
 
-    if not check_token(config['BEARER_TOKEN']):
+    if not check_token(BEARER_TOKEN):
         logging.error('Token is not active')
 
         telegram_notification(
-            api_key=config['TL_API_KEY'],
-            chat_id=config['TL_CHAT_ID'],
+            api_key=TL_API_KEY,
+            chat_id=TL_CHAT_ID,
             message=f'Token is not active'
         )
 
@@ -174,25 +182,25 @@ if __name__ == '__main__':
         actual_ip = get_actual_ip()
 
         record_ip = get_record_ip(
-            bearer_token=config['BEARER_TOKEN'],
-            dns_record_id=config['DNS_RECORD_ID'],
-            zone_id=config['ZONE_ID']
+            bearer_token=BEARER_TOKEN,
+            dns_record_id=DNS_RECORD_ID,
+            zone_id=ZONE_ID
         )
 
         if actual_ip != record_ip:
             res = update_record(
-                bearer_token=config['BEARER_TOKEN'],
-                dns_record_id=config['DNS_RECORD_ID'],
-                zone_id=config['ZONE_ID'],
-                dns_record_name=config['DNS_RECORD_NAME'],
+                bearer_token=BEARER_TOKEN,
+                dns_record_id=DNS_RECORD_ID,
+                zone_id=ZONE_ID,
+                dns_record_name=DNS_RECORD_NAME,
                 new_ip=actual_ip
             )
 
             logging.info(f'IP changed from {record_ip} to {actual_ip}')
 
             telegram_notification(
-                api_key=config['TL_API_KEY'],
-                chat_id=config['TL_CHAT_ID'],
+                api_key=TL_API_KEY,
+                chat_id=TL_CHAT_ID,
                 message=f'IP changed from {record_ip} to {actual_ip}'
             )
         else:

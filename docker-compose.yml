@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  app:
+    image: cloudflare-dynamic-ip-updater:latest
+    
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: cloudflare-dynamic-ip-updater
+
+    restart: unless-stopped
+
+    environment:
+      DNS_RECORD_ID: ${DNS_RECORD_ID}
+      DNS_RECORD_NAME: ${DNS_RECORD_NAME}
+      ZONE_ID: ${ZONE_ID}
+      BEARER_TOKEN: ${BEARER_TOKEN}
+      TL_API_KEY: ${TL_API_KEY}
+      TL_CHAT_ID: ${TL_CHAT_ID}
