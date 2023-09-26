@@ -1,3 +1,12 @@
+"""
+References: 
+    - Make API calls: https://developers.cloudflare.com/fundamentals/api/how-to/make-api-calls/
+    - Verify Token: https://developers.cloudflare.com/api/operations/user-api-tokens-verify-token
+    - List DNS Records: https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-list-dns-records
+    - DNS Record Details: https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-dns-record-details
+    - Update DNS Record: https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-update-dns-record
+"""
+
 import os
 import requests
 import subprocess
