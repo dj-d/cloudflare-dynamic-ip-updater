@@ -1,7 +1,16 @@
-# Python
+### Python
 venv/
+.venv
 **/__pycache__/
+*.pyc
 
-# Other
+### JetBrains
+.idea/
+
+### Visual Studio Code
+.vscode/
+
+### Other
 .env
 *.log
+*.txt
