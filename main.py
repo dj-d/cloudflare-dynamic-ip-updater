@@ -1,27 +1,21 @@
 """
 References: 
-    - Make API calls: https://developers.cloudflare.com/fundamentals/api/how-to/make-api-calls/
-    - Verify Token: https://developers.cloudflare.com/api/operations/user-api-tokens-verify-token
-    - List DNS Records: https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-list-dns-records
-    - DNS Record Details: https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-dns-record-details
-    - Update DNS Record: https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-update-dns-record
+    - python-cloudflare:
+        - https://blog.cloudflare.com/python-cloudflare/
+        - https://github.com/cloudflare/cloudflare-python/tree/main
+    - DNS Record Details: https://developers.cloudflare.com/api/python/resources/dns/subresources/records/methods/get/
+    - Update DNS Record: https://developers.cloudflare.com/api/python/resources/dns/subresources/records/methods/edit/
+    - List Zones: https://developers.cloudflare.com/api/resources/zones/methods/list/
+    - List DNS Records: https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/list/
 """
 
 import os
+from time import sleep
+from typing_extensions import Literal
+
 import requests
 import subprocess
-from time import sleep
-import logging
-
-
-# FIXME: fix running in local environment (by python3 main.py)
-
-
-logging.basicConfig(
-    filename='app.log',
-    format='%(levelname)s - %(asctime)s - %(message)s',
-    level=logging.INFO
-)
+from cloudflare import Cloudflare
 
 
 def telegram_notification(api_key: str, chat_id: str, message: str) -> None:
@@ -45,11 +39,11 @@ def get_actual_ip() -> str:
     _r = requests.get('https://api.ipify.org/?format=json')
 
     if _r.status_code == 200:
-        logging.info(f'Actual IP: {_r.json()["ip"]}')
+        print(f'Actual IP: {_r.json()["ip"]}')
 
         return _r.json()['ip']
     else:
-        logging.error(f'Error while getting actual IP: {_r.json()}')
+        print(f'Error while getting actual IP: {_r.json()}')
 
         telegram_notification(
             api_key=TL_API_KEY,
@@ -60,159 +54,87 @@ def get_actual_ip() -> str:
         raise Exception(f'Error while getting actual IP: {_r.json()}')
 
 
-def check_token(bearer_token: str) -> bool:
-    _r = requests.get(
-        'https://api.cloudflare.com/client/v4/user/tokens/verify',
-        headers={
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {bearer_token}'
-        }
-    )
+def get_dns_record_ip(cf_client: Cloudflare, zone_id: str, dns_record_id: str) -> str:
+    try:
+        record = cf_client.dns.records.get(
+            zone_id=zone_id,
+            dns_record_id=dns_record_id
+        )
 
-    if _r.status_code == 200:
-        logging.info(f'Token is active: {_r.json()["result"]["status"]}')
-
-        return _r.json()['result']['status'] == 'active'
-    else:
-        logging.error(f'Error while checking token: {_r.json()}')
+        return record.content
+    except Exception as e:
+        print(f'Error while getting DNS record: {e}')
 
         telegram_notification(
             api_key=TL_API_KEY,
             chat_id=TL_CHAT_ID,
-            message=f'Error while checking token: {_r.json()}'
+            message=f'Error while getting DNS record: {e}'
         )
 
-        # raise Exception(f'Error while checking token: {_r.json()}')
+        raise Exception(f'Error while getting DNS record: {e}')
 
 
-def get_record_list(bearer_token: str, zone_id: str) -> list:
-    _r = requests.get(
-        f'https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records',
-        headers={
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {bearer_token}'
-        }
-    )
+def update_dns_record(cf_client: Cloudflare, zone_id: str, dns_record_id: str, dns_record_name: str, ip: str, record_type: Literal['A'] = 'A') -> bool:
+    try:
+        response = cf_client.dns.records.update(
+            zone_id=zone_id,
+            dns_record_id=dns_record_id,
+            name=dns_record_name,
+            content=ip,
+            type=record_type
+        )
 
-    if _r.status_code == 200:
-        logging.info(f'Record list: {_r.json()["result"]}')
-
-        return _r.json()['result']
-    else:
-        logging.error(f'Error while getting record list: {_r.json()}')
+        print(f'DNS record updated: {response}')
+        return True
+    except Exception as e:
+        print(f'Error while updating DNS record: {e}')
 
         telegram_notification(
             api_key=TL_API_KEY,
             chat_id=TL_CHAT_ID,
-            message=f'Error while getting record list: {_r.json()}'
+            message=f'Error while updating DNS record: {e}'
         )
 
-        raise Exception(f'Error while getting record list: {_r.json()}')
-
-
-def get_record_ip(bearer_token: str, dns_record_id: str, zone_id: str) -> str:
-    _r = requests.get(
-        f'https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records/{dns_record_id}',
-        headers={
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {bearer_token}'
-        }
-    )
-
-    if _r.status_code == 200:
-        logging.info(f'Record IP: {_r.json()["result"]["content"]}')
-
-        return _r.json()['result']['content']
-    else:
-        logging.error(f'Error while getting record: {_r.json()}')
-
-        telegram_notification(
-            api_key=TL_API_KEY,
-            chat_id=TL_CHAT_ID,
-            message=f'Error while getting record: {_r.json()}'
-        )
-
-        raise Exception(f'Error while getting record: {_r.json()}')
-
-
-def update_record(bearer_token: str, dns_record_id: str, zone_id: str, dns_record_name: str, new_ip: str):
-    _r = requests.put(
-        f'https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records/{dns_record_id}',
-        headers={
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {bearer_token}'
-        },
-        json={
-            'content': new_ip,
-            'name': dns_record_name,
-            'proxied': False,
-            'type': 'A',
-            'comment': 'Domain record',
-            'ttl': 1
-        }
-    )
-
-    if _r.status_code == 200:
-        logging.info(f'Updated record IP: {_r.json()["result"]["content"]}')
-
-        return _r.json()['result']['content']
-    else:
-        logging.error(f'Error while updating record: {_r.json()}')
-
-        telegram_notification(
-            api_key=TL_API_KEY,
-            chat_id=TL_CHAT_ID,
-            message=f'Error while updating record: {_r.json()}'
-        )
-
-        raise Exception(f'Error while updating record: {_r.json()}')
+        raise Exception(f'Error while updating DNS record: {e}')
 
 
 if __name__ == '__main__':
-    DNS_RECORD_ID = os.environ.get('DNS_RECORD_ID')
-    DNS_RECORD_NAME = os.environ.get('DNS_RECORD_NAME')
-    ZONE_ID = os.environ.get('ZONE_ID')
-    BEARER_TOKEN = os.environ.get('BEARER_TOKEN')
-    TL_API_KEY = os.environ.get('TL_API_KEY')
-    TL_CHAT_ID = os.environ.get('TL_CHAT_ID')
+    BEARER_TOKEN = str(os.environ.get('BEARER_TOKEN'))
+    DNS_RECORD_ID = str(os.environ.get('DNS_RECORD_ID'))
+    DNS_RECORD_NAME = str(os.environ.get('DNS_RECORD_NAME'))
+    ZONE_ID = str(os.environ.get('ZONE_ID'))
+    TL_API_KEY = str(os.environ.get('TL_API_KEY'))
+    TL_CHAT_ID = str(os.environ.get('TL_CHAT_ID'))
 
-    if not check_token(BEARER_TOKEN):
-        logging.error('Token is not active')
-
-        telegram_notification(
-            api_key=TL_API_KEY,
-            chat_id=TL_CHAT_ID,
-            message=f'Token is not active'
-        )
-
-        raise Exception('Token is not active')
+    cf = Cloudflare(
+        api_token=BEARER_TOKEN
+    )
 
     while True:
-        actual_ip = get_actual_ip()
+        current_ip = get_actual_ip()
 
-        record_ip = get_record_ip(
-            bearer_token=BEARER_TOKEN,
-            dns_record_id=DNS_RECORD_ID,
-            zone_id=ZONE_ID
+        record_ip = get_dns_record_ip(
+            cf_client=cf,
+            zone_id=ZONE_ID,
+            dns_record_id=DNS_RECORD_ID
         )
 
-        if actual_ip != record_ip:
-            res = update_record(
-                bearer_token=BEARER_TOKEN,
-                dns_record_id=DNS_RECORD_ID,
+        if current_ip != record_ip:
+            update_response = update_dns_record(
+                cf_client=cf,
                 zone_id=ZONE_ID,
+                dns_record_id=DNS_RECORD_ID,
                 dns_record_name=DNS_RECORD_NAME,
-                new_ip=actual_ip
+                ip=current_ip
             )
 
-            logging.info(f'IP changed from {record_ip} to {actual_ip}')
-
-            telegram_notification(
-                api_key=TL_API_KEY,
-                chat_id=TL_CHAT_ID,
-                message=f'IP changed from {record_ip} to {actual_ip}'
-            )
+            if update_response:
+                telegram_notification(
+                    api_key=TL_API_KEY,
+                    chat_id=TL_CHAT_ID,
+                    message=f'IP updated to {current_ip}'
+                )
         else:
-            logging.info(f'IP is actual {actual_ip}')
-        
-        sleep(5)
+            print(f'IP already updated to {current_ip}')
+
+        sleep(300)
