@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   app:
     image: cloudflare-dynamic-ip-updater:latest
