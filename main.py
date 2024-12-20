@@ -17,6 +17,8 @@ import requests
 import subprocess
 from cloudflare import Cloudflare
 
+ENABLE_TELEGRAM_NOTIFICATION = False
+
 
 def telegram_notification(api_key: str, chat_id: str, message: str) -> None:
     """
@@ -45,11 +47,12 @@ def get_actual_ip() -> str:
     else:
         print(f'Error while getting actual IP: {_r.json()}')
 
-        telegram_notification(
-            api_key=TL_API_KEY,
-            chat_id=TL_CHAT_ID,
-            message=f'Error while getting actual IP: {_r.json()}'
-        )
+        if ENABLE_TELEGRAM_NOTIFICATION:
+            telegram_notification(
+                api_key=TL_API_KEY,
+                chat_id=TL_CHAT_ID,
+                message=f'Error while getting actual IP: {_r.json()}'
+            )
 
         raise Exception(f'Error while getting actual IP: {_r.json()}')
 
@@ -65,11 +68,12 @@ def get_dns_record_ip(cf_client: Cloudflare, zone_id: str, dns_record_id: str) -
     except Exception as e:
         print(f'Error while getting DNS record: {e}')
 
-        telegram_notification(
-            api_key=TL_API_KEY,
-            chat_id=TL_CHAT_ID,
-            message=f'Error while getting DNS record: {e}'
-        )
+        if ENABLE_TELEGRAM_NOTIFICATION:
+            telegram_notification(
+                api_key=TL_API_KEY,
+                chat_id=TL_CHAT_ID,
+                message=f'Error while getting DNS record: {e}'
+            )
 
         raise Exception(f'Error while getting DNS record: {e}')
 
@@ -89,11 +93,12 @@ def update_dns_record(cf_client: Cloudflare, zone_id: str, dns_record_id: str, d
     except Exception as e:
         print(f'Error while updating DNS record: {e}')
 
-        telegram_notification(
-            api_key=TL_API_KEY,
-            chat_id=TL_CHAT_ID,
-            message=f'Error while updating DNS record: {e}'
-        )
+        if ENABLE_TELEGRAM_NOTIFICATION:
+            telegram_notification(
+                api_key=TL_API_KEY,
+                chat_id=TL_CHAT_ID,
+                message=f'Error while updating DNS record: {e}'
+            )
 
         raise Exception(f'Error while updating DNS record: {e}')
 
@@ -103,8 +108,11 @@ if __name__ == '__main__':
     DNS_RECORD_ID = str(os.environ.get('DNS_RECORD_ID'))
     DNS_RECORD_NAME = str(os.environ.get('DNS_RECORD_NAME'))
     ZONE_ID = str(os.environ.get('ZONE_ID'))
-    TL_API_KEY = str(os.environ.get('TL_API_KEY'))
-    TL_CHAT_ID = str(os.environ.get('TL_CHAT_ID'))
+    TL_API_KEY = str(os.environ.get('TL_API_KEY', default=''))
+    TL_CHAT_ID = str(os.environ.get('TL_CHAT_ID', default=''))
+
+    if BEARER_TOKEN == '' or DNS_RECORD_ID == '' or DNS_RECORD_NAME == '' or ZONE_ID == '':
+        raise Exception('BEARER_TOKEN, DNS_RECORD_ID, DNS_RECORD_NAME and ZONE_ID are required')
 
     cf = Cloudflare(
         api_token=BEARER_TOKEN
@@ -128,7 +136,7 @@ if __name__ == '__main__':
                 ip=current_ip
             )
 
-            if update_response:
+            if update_response and ENABLE_TELEGRAM_NOTIFICATION:
                 telegram_notification(
                     api_key=TL_API_KEY,
                     chat_id=TL_CHAT_ID,
