@@ -19,11 +19,10 @@ The script requires a `.env` file in the root directory with the following varia
 |-------------------|------------------------|--------|----------|
 | `BEARER_TOKEN`    | Cloudflare API token   | string | Yes      |
 | `ZONE_ID`         | Cloudflare zone ID     | string | Yes      |
-| `ACCOUNT_ID`      | Cloudflare account ID  | string | Yes      |
 | `DNS_RECORD_ID`   | Cloudflare record ID   | string | Yes      |
 | `DNS_RECORD_NAME` | Cloudflare record name | string | Yes      |
-| `TL_API_KEY`      | Telegram bot API key   | string | Yes      |
-| `TL_CHAT_ID`      | Telegram chat ID       | string | Yes      |
+| `TL_API_KEY`      | Telegram bot API key   | string | No       |
+| `TL_CHAT_ID`      | Telegram chat ID       | string | No       |
 
 ### How to get Cloudflare Credentials
 
@@ -37,7 +36,7 @@ To create a Cloudflare API token go to `Cloudflare Dashboard -> My Profile -> AP
 
 And click `Continue to Summary` and `Create Token`.
 
-To get the `ZONE_ID` and `ACCOUNT_ID` you can use the following command:
+To get the `ZONE_ID` you can use the following command:
 
 ```bash
 curl https://api.cloudflare.com/client/v4/zones \
